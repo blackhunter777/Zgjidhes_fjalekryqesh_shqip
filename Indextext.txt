@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="sq">
+<head>
+    <meta charset="UTF-8" />
+    <title>Zgjidh Fjalekryqe Shqip</title>
+</head>
+<body>
+    <h1>Zgjidh Fjalekryqe Shqip</h1>
+    <p>Shkruaj fjalën që kërkon dhe klikoni "Kërko".</p>
+
+    <input type="text" id="fjala" placeholder="Shkruaj fjalën" />
+    <button onclick="kerko()">Kërko</button>
+
+    <div id="rezultati"></div>
+
+    <script>
+        const fjale = ["shqip", "liber", "mal", "det", "ujë", "dritë", "mjek", "shok", "bashkë", "shkollë"];
+        function kerko() {
+            const f = document.getElementById('fjala').value.toLowerCase();
+            const rezDiv = document.getElementById('rezultati');
+            const gjetur = fjale.filter(w => w.includes(f));
+            if (gje
