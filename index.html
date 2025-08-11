@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="sq">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Zgjidhës & Gjenerator Fjalekryqesh (Shqip)</title>
+<meta name="description" content="Gjenerator fjalekryqesh dhe zgjidhës pattern-sh për fjalekryqe në shqip. Ngarkoni wordlist tuaj për rezultate më të sakta."/>
+<style>
+  :root{--bg:#f6f8fb;--card:#fff;--accent:#2a7ae2;--muted:#666}
+  body{font-family:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;margin:0;background:var(--bg);color:#111}
+  header{background:linear-gradient(90deg,#f0f6ff, #ffffff);padding:18px 12px;border-bottom:1px solid #e6eefc}
+  .wrap{max-width:980px;margin:18px auto;padding:12px}
+  h1{margin:0 0 8px;font-size:20px;color:var(--accent)}
+  .row{display:flex;gap:16px;flex-wrap:wrap}
+  .card{background:var(--card);padding:12px;border-radius:10px;box-shadow:0 2px 8px rgba(20,30,60,0.04);flex:1}
+  .col-small{flex:0 0 320px}
+  label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+  input[type="text"], input[type="number"], textarea, select{width:100%;padding:8px;border-radius:6px;border:1px solid #ddd;font-size:14px}
+  button{background:var(--accent);color:#fff;border:none;padding:8px 10px;border-radius:8px;cursor:pointer}
+  button.secondary{background:#6b7280}
+  .grid{display:grid;grid-template-columns:repeat(10,40px);gap:3px;justify-content:center;padding:10px}
+  .cell{width:40px;height:40px;display:flex;align-items:center;justify-content:center;border:1px solid #cbd5e1;background:#fff;font-weight:600}
+  .cell.black{background:#2d3748;color:#fff}
+  .cell.filled{background:#d4edda}
+  .clue-list{max-height:260px;overflow:auto;padding:6px;border:1px dashed #eee;border-radius:6px}
+  ul{padding-left:16px;margin:6px 0}
+  .results{max-height:220px;overflow:auto;border-top:1px solid #eee;padding-top:8px;margin-top:8px}
+  .small{font-size:13px;color:var(--muted)}
+  .hint{font-size:13px;color:#0b7285;margin-top:8px}
+  footer{max-width:980px;margin:24px auto;color:#666;font-size:13px;text-align:center}
+  @media(max-width:720px){.grid{grid-template-columns:repeat(8,36px)}.cell{width:36px;height:36px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>Zgjidhës & Gjenerator Fjalekryqesh (Shqip)</h1>
+    <div class="small">Gjenero fjalekryqe të ndryshme automatikisht dhe kërko fjalë sipas modelit (p.sh. <code>e_tni_k_</code>) — ngarko wordlist-in tënd për rezultate më të plota.</div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="row">
+    <!-- LEFT: Generator -->
+    <div class="card col-small">
+      <h3>Gjenerator fjalekryqesh</h3>
+      <label>Dimensionet e tabelës</label>
+      <div style="display:flex;gap:8px">
+        <input id="inputRows" type="number" min="5" max="20" value="10"/>
+        <input id="inputCols" type="number" min="5" max="20" value="10"/>
+      </div>
+
+      <label style="margin-top:10px">Numri i fjalëve për të futur</label>
+      <input id="inputCount" type="number" min="1" max="200" value="12"/>
+
+      <label style="margin-top:10px">Burim fjalësh</label>
+      <select id="sourceSelect">
+        <option value="builtin">Për shembull (fjalor i vogël)</option>
+        <option value="uploaded">Ngarkoni wordlist (.txt, 1 fjalë/rresht)</option>
+      </select>
+
+      <div id="uploadArea" style="margin-top:8px;display:none">
+        <label>Ngarko .txt (1 fjalë për rresht):</label>
+        <input id="wordlistFile" type="file" accept=".txt"/>
+        <div class="small">Pasi të ngarkoni, shtyp "Ngarko fjalor" për t'u përdorur nga gjeneratori/solver.</div>
+        <button style="margin-top:8px" onclick="loadUploadedWordlist()">Ngarko fjalor</button>
+      </div>
+
+      <div style="margin-top:12px;display:flex;gap:8px">
+        <button onclick="generateGrid()">Gjenero Fjalekryq</button>
+        <button class="secondary" onclick="clearGrid()">Fshi</button>
+      </div>
+
+      <div style="margin-top:12px">
+        <div class="small">Fjalët e vendosura (numëruar):</div>
+        <div id="clues" class="clue-list"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Grid + Solver -->
+    <div class="card" style="flex:2">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h3 style="margin:0">Tabela (Kliko një fjalë te lista për t'u zgjidhur)</h3>
+        <div class="small">Fjalë të vendosura do shfaqen si lista me numra (p.sh. 41 H).</div>
+      </div>
+
+      <div id="gridWrap" style="display:flex;justify-content:center;margin-top:10px">
+        <div id="grid" class="grid" aria-hidden="true"></div>
+      </div>
+
+      <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <div style="flex:1;min-width:220px">
+          <label>Pattern (p.sh. <code>e_tni_k_</code>)</label>
+          <input id="patternInput" type="text" placeholder="Shkruaj modelin me '_' për bosh" />
+        </div>
+
+        <div style="min-width:140px">
+          <label>Ose zgjedh fjalen nga lista (numri/drejtimi)</label>
+          <input id="selectedEntry" type="text" placeholder="p.sh. 41 H ose 7 V" />
+        </div>
+
+        <div style="min-width:140px">
+          <label>Max rezultate</label>
+          <input id="maxResults" type="number" value="50" min="1" max="200" />
+        </div>
+
+        <div style="align-self:end">
+          <button onclick="runSolver()">Gjej fjalët</button>
+        </div>
+      </div>
+
+      <div class="hint">Më poshtë do shfaqen rezultatet; klikoni një rezultat për ta vendosur automatikisht në fjalekryq (nëse përputhet).</div>
+
+      <div class="results" id="results"></div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div>Ruaje këtë file si <strong>index.html</strong>. Përdor "Upload wordlist" për të ngarkuar një fjalor më të madh (një fjalë për rresht). Karakteret si <em>ë, ç</em> mbështeten për sa kohë fjalori i përmban ato.</div>
+</footer>
+
+<script>
+/* ---------------------------
+   Demo built-in wordlist (shqip, shembull i vogël)
+   Shtoni/zgjeroni sipas nevojës. Për fjalor të madh ngarkoni .txt.
+   --------------------------- */
+const builtinWords = [
+  "shqiperia","shqiptare","shqip","shkollë","libër","historik",
+  "ekonomi","politik","etnike","etnik","kombëtar","bukur",
+  "program","kompjuter","internet","softuer","matematik","gjeografi",
+  "mjekesi","shendet","kulturë","traditë","arte","botanik","kanoe",
+  "tregues","arkitekturë","edukim","gazetari","muzikë","dramatik",
+  "teknologji","rrugë","pyetje","përgjigje","fjalë","zgjidh","fshat",
+  "mal","det","ujë","diell","hënë","natë","zemër","shtet","bashkë"
+];
+
+/* State */
+let wordlist = builtinWords.slice(); // aktual
+let grid = []; // 2D array chars or null
+let rows = 10, cols = 10;
+let placedEntries = []; // {id, word, row, col, dir('H'|'V'), length}
+
+/* Helper: sanitize & normalize words (lowercase, trim) */
+function norm(w){ return String(w||"").toLowerCase().trim(); }
+
+/* File upload UI toggle */
+document.getElementById('sourceSelect').addEventListener('change', e=>{
+  document.getElementById('uploadArea').style.display = e.target.value === 'uploaded' ? 'block':'none';
+});
+
+/* Load uploaded wordlist (.txt) */
+function loadUploadedWordlist(){
+  const fileInput = document.getElementById('wordlistFile');
+  if(!fileInput.files || !fileInput.files[0]){ alert("Zgjidh një file .txt me fjalë."); return; }
+  const f = fileInput.files[0];
+  const reader = new FileReader();
+  reader.onload = function(evt){
+    const text = evt.target.result;
+    // Split lines and normalize
+    const lines = text.split(/\r?\n/).map(l=>norm(l)).filter(l=>l.length>0);
+    if(lines.length === 0){ alert("File bosh ose format i gabuar."); return; }
+    wordlist = Array.from(new Set(lines)); // unik
+    alert("Fjalori u ngarkua: " + wordlist.length + " fjalë.");
+  };
+  reader.readAsText(f,'utf-8');
+}
+
+/* Create or clear grid */
+function initGrid(r,c){
+  rows = Math.max(5, Math.min(20, parseInt(r)||10));
+  cols = Math.max(5, Math.min(20, parseInt(c)||10));
+  grid = [];
+  for(let i=0;i<rows;i++){
+    const row = new Array(cols).fill('');
+    grid.push(row);
+  }
+  placedEntries = [];
+  renderGrid();
+  renderClues();
+}
+
+/* Render grid DOM */
+function renderGrid(){
+  const gridEl = document.getElementById('grid');
+  gridEl.innerHTML = '';
+  gridEl.style.gridTemplateColumns = `repeat(${cols},40px)`;
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<cols;c++){
+      const div = document.createElement('div');
+      div.className = 'cell';
+      if(grid[r][c] === '#'){ div.classList.add('black'); div.textContent = ''; }
+      else if(grid[r][c]){ div.classList.add('filled'); div.textContent = grid[r][c].toUpperCase(); }
+      else div.textContent = '';
+      gridEl.appendChild(div);
+    }
+  }
+}
+
+/* Clear grid content (but keep size) */
+function clearGrid(){
+  initGrid(rows, cols);
+}
+
+/* Try to place one word at position, returns true if placed */
+function tryPlaceWord(word, r,c, dir){
+  const L = word.length;
+  if(dir === 'H'){
+    if(c + L > cols) return false;
+    for(let i=0;i<L;i++){
+      const ch = grid[r][c+i];
+      if(ch === '#') return false;
+      if(ch && ch !== word[i]) return false; // conflict
+    }
+    // place
+    for(let i=0;i<L;i++) grid[r][c+i] = word[i];
+    return true;
+  } else {
+    if(r + L > rows) return false;
+    for(let i=0;i<L;i++){
+      const ch = grid[r+i][c];
+      if(ch === '#') return false;
+      if(ch && ch !== word[i]) return false;
+    }
+    for(let i=0;i<L;i++) grid[r+i][c] = word[i];
+    return true;
+  }
+}
+
+/* Place multiple words random-ish */
+function generateGrid(){
+  // read inputs
+  const r = parseInt(document.getElementById('inputRows').value) || 10;
+  const c = parseInt(document.getElementById('inputCols').value) || 10;
+  const count = Math.max(1, Math.min(200, parseInt(document.getElementById('inputCount').value)||12));
+  initGrid(r,c);
+  // choose source
+  if(document.getElementById('sourceSelect').value === 'builtin'){
+    wordlist = builtinWords.slice();
+  }
+  // shuffle wordlist by length descending (try to place longer words first)
+  const pool = wordlist.slice().sort((a,b)=>b.length - a.length);
+  let placed = 0;
+  let idCounter = 1;
+  for(let w of pool){
+    if(placed >= count) break;
+    const word = norm(w);
+    if(word.length > Math.max(rows,cols)) continue;
+    // try multiple random positions
+    let attempts = 0;
+    let ok = false;
+    while(attempts < 120 && !ok){
+      const dir = Math.random() < 0.5 ? 'H' : 'V';
+      const rr = Math.floor(Math.random() * rows);
+      const cc = Math.floor(Math.random() * cols);
+      // ensure start cell empty or matching
+      if(tryPlaceWord(word, rr, cc, dir)){
+        placedEntries.push({id: idCounter, word, row: rr, col: cc, dir: dir, length: word.length});
+        idCounter++;
+        placed++;
+        ok = true;
+      } else {
+        // try other start positions
+        attempts++;
+      }
+    }
+  }
+
+  // Fill remaining empty cells with random letters (from A-Z + some shqip chars)
+  const letters = "abcdefghijklmnopqrstuvwxyzëç"; // simple set
+  for(let i=0;i<rows;i++){
+    for(let j=0;j<cols;j++){
+      if(!grid[i][j] || grid[i][j] === ''){
+        grid[i][j] = letters[Math.floor(Math.random()*letters.length)];
+      }
+    }
+  }
+  renderGrid();
+  renderClues();
+  alert("Gjeneruar: " + placedEntries.length + " fjalë.");
+}
+
+/* Render clues list */
+function renderClues(){
+  const el = document.getElementById('clues');
+  el.innerHTML = '';
+  if(placedEntries.length === 0){ el.innerHTML = '<div class="small">S’ka fjalë të vendosura.</div>'; return; }
+  // Show each with id and direction and a small pattern
+  for(const e of placedEntries){
+    const li = document.createElement('div');
+    li.style.padding = '6px';
+    li.style.borderBottom = '1px solid #f0f3f7';
+    const dir = e.dir === 'H' ? 'H' : 'V';
+    const pattern = getPatternForEntry(e);
+    li.innerHTML = `<strong>${e.id}</strong> &nbsp; ${dir} &nbsp; (${e.length}) &nbsp; <span class="small" style="color:#555">${pattern}</span>`;
+    li.style.cursor = 'pointer';
+    li.onclick = ()=>{ document.getElementById('selectedEntry').value = `${e.id} ${dir}`; document.getElementById('patternInput').value = pattern; };
+    el.appendChild(li);
+  }
+}
+
+/* Get pattern (with '_' for unknowns) for entry based on current grid (we treat uppercase letters as filled) */
+function getPatternForEntry(entry){
+  const arr = [];
+  for(let i=0;i<entry.length;i++){
+    let r = entry.row + (entry.dir==='V' ? i : 0);
+    let c = entry.col + (entry.dir==='H' ? i : 0);
+    const ch = grid[r][c] || '';
+    // If ch came from original placed word it's filled; but for pattern we show known letters; we assume grid holds letters
+    arr.push(ch ? ch : '_');
+  }
+  return arr.join('');
+}
+
+/* Solver: either pattern input or selected entry like "41 H" */
+function runSolver(){
+  // assemble pattern
+  let pattern = document.getElementById('patternInput').value.trim().toLowerCase();
+  const sel = document.getElementById('selectedEntry').value.trim();
+  if(!pattern && sel){
+    // parse sel like "41 H" or "7 V"
+    const parts = sel.split(/\s+/);
+    const nid = parseInt(parts[0]);
+    const dirHint = parts[1] ? parts[1].toUpperCase() : null;
+    const entry = placedEntries.find(en => en.id === nid && (!dirHint || en.dir === (dirHint==='H'?'H':'V')));
+    if(!entry){ alert("Nuk u gjet entry me atë numër. Sigurohu që po përdor numrin e listës."); return; }
+    pattern = getPatternForEntry(entry);
+    document.getElementById('patternInput').value = pattern;
+  }
+  if(!pattern){
+    alert("Shkruaj një pattern (p.sh. e_tni_k_) ose zgjidh një entry nga lista.");
+    return;
+  }
+  // transform pattern to regex
+  // accept only letters or '_' as wildcard
+  const pat = pattern.replace(/\s+/g,'').toLowerCase();
+  if(!/^[a-zëç_]+$/.test(pat)){
+    alert("Pattern duhet të përmbajë shkronja dhe '_' vetëm.");
+    return;
+  }
+  const maxRes = Math.max(1, Math.min(500, parseInt(document.getElementById('maxResults').value)||50));
+  const regex = new RegExp("^" + pat.replace(/_/g, ".") + "$");
+  // ensure wordlist contains normalized lowercase words
+  const results = [];
+  for(const w of wordlist){
+    const nw = norm(w);
+    if(nw.length !== pat.length) continue;
+    if(regex.test(nw)) results.push(nw);
+    if(results.length >= maxRes) break;
+  }
+  showResults(results);
+}
+
+/* Show results and enable click-to-insert (if fits) */
+function showResults(list){
+  const resDiv = document.getElementById('results');
+  resDiv.innerHTML = '';
+  if(list.length === 0){ resDiv.innerHTML = '<div class="small">Nuk u gjet asnjë fjalë.</div>'; return; }
+  const ul = document.createElement('ul');
+  ul.style.listStyle='none';
+  ul.style.padding='0';
+  list.forEach(w=>{
+    const li = document.createElement('li');
+    li.style.padding='6px';
+    li.style.borderBottom='1px solid #f0f3f7';
+    li.textContent = w;
+    li.style.cursor = 'pointer';
+    li.title = "Kliko për ta vendosur në tabelë (nëse përputhet me entry të zgjedhur)";
+    li.onclick = ()=> tryInsertSolution(w);
+    ul.appendChild(li);
+  });
+  resDiv.appendChild(ul);
+}
+
+/* Try to insert chosen solution into the selected entry (if provided and fits) */
+function tryInsertSolution(word){
+  const sel = document.getElementById('selectedEntry').value.trim();
+  if(!sel){ alert("Nëse dëshiron ta vendosësh automatikisht fjalën, fut numrin e entry-t (p.sh. '41 H') ose klikoni një entry te lista."); return; }
+  const parts = sel.split(/\s+/);
+  const nid = parseInt(parts[0]);
+  const dirHint = parts[1] ? parts[1].toUpperCase() : null;
+  const entry = placedEntries.find(en => en.id === nid && (!dirHint || en.dir === (dirHint==='H'?'H':'V')));
+  if(!entry){ alert("Entry i papërcaktuar ose i gabuar."); return; }
+  if(word.length !== entry.length){ alert("Gjatësia nuk përputhet me entry-n e zgjedhur."); return; }
+  // verify compatibility with current grid letters (if any)
+  for(let i=0;i<word.length;i++){
+    const r = entry.row + (entry.dir==='V' ? i : 0);
+    const c = entry.col + (entry.dir==='H' ? i : 0);
+    const ch = grid[r][c];
+    if(ch && ch !== '' && ch !== word[i]){ alert("Fjala nuk përputhet me shkronjat ekzistuese në tabelë."); return; }
+  }
+  // place word
+  for(let i=0;i<word.length;i++){
+    const r = entry.row + (entry.dir==='V' ? i : 0);
+    const c = entry.col + (entry.dir==='H' ? i : 0);
+    grid[r][c] = word[i];
+  }
+  renderGrid();
+  renderClues();
+  alert("Fjala u vendos: " + word);
+}
+
+/* Initialize default */
+initGrid(10,10);
+
+/* Allow pressing Enter to run solver */
+document.getElementById('patternInput').addEventListener('keydown', function(e){
+  if(e.key === 'Enter') runSolver();
+});
+</script>
+</body>
+</html>
