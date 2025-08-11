@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="sq">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Zgjidh Fjalekryqe Shqip</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 2rem auto;
+      padding: 1rem;
+      background: #f7f7f7;
+      color: #333;
+    }
+    h1 {
+      text-align: center;
+      color: #2a7ae2;
+    }
+    input[type="text"] {
+      width: 80%;
+      padding: 0.5rem;
+      font-size: 1rem;
+      margin-right: 0.5rem;
+    }
+    button {
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      cursor: pointer;
+      background-color: #2a7ae2;
+      color: white;
+      border: none;
+      border-radius: 4px;
+    }
+    .result {
+      margin-top: 1.5rem;
+      font-weight: bold;
+      font-size: 1.2rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h1>Zgjidh Fjalekryqe Shqip</h1>
+
+  <p>Shkruaj fjalën dhe klik "Kontrollo" për të parë nëse është pjesë e fjalekryqit:</p>
+  <input type="text" id="fjala" placeholder="Fut fjalën këtu..." />
+  <button onclick="kontrolloFjale()">Kontrollo</button>
+
+  <div class="result" id="result"></div>
+
+  <script>
+    // Lista e fjalëve të fjalekryqes (shembull)
+    const fjaletEFjalekryqes = [
+      "shqip",
+      "libri",
+      "shkollë",
+      "kompjuter",
+      "program",
+      "internet",
+      "pyetje",
+      "gjuhë",
+      "fjalë",
+      "zgjidh"
+    ];
+
+    function kontrolloFjale() {
+      const fjalaInput = document.getElementById("fjala").value.trim().toLowerCase();
+      const rezultati = document.getElementById("result");
+
+      if (!fjalaInput) {
+        rezultati.textContent = "Ju lutem shkruani një fjalë.";
+        rezultati.style.color = "red";
+        return;
+      }
+
+      if (fjaletEFjalekryqes.includes(fjalaInput)) {
+        rezultati.textContent = `Fjala "${fjalaInput}" është pjesë e fjalekryqes! 🎉`;
+        rezultati.style.color = "green";
+      } else {
+        rezultati.textContent = `Fjala "${fjalaInput}" nuk gjendet në fjalekryq. 😕`;
+        rezultati.style.color = "orange";
+      }
+    }
+  </script>
+</body>
+</html>
